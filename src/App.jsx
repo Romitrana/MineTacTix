@@ -6,9 +6,12 @@ import Controlls from "./Components/Controlls.jsx";
 // import { useState } from "react";
 
 function App() {
-  const [isStarted, setIsStarted] = useState(false);
-  function handleGameStatus(gameStatus) {
-    setIsStarted(gameStatus);
+  const [isStarted, setIsStarted] = useState({start:false,mines:1});
+  function handleGameStatus(gameStatus,configMines) {
+    setIsStarted(prev=>{ 
+      const prevObj = {...prev,start:gameStatus,mines:configMines};
+      return prevObj;
+    });
   }
 
   return (

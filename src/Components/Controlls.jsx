@@ -13,7 +13,6 @@ const initialConfigure = {
     200.0,
   ],
   poolIndex: 0,
-  boomsIndexs:[]
 };
 export default function Controlls({ onStart }) {
   const [config, setConfig] = useState(initialConfigure);
@@ -51,7 +50,7 @@ export default function Controlls({ onStart }) {
   function handleStartGame() {
     setGameStarted((prev) => {
       const newState = !prev;
-      setTimeout(() => onStart(newState), 0);  // ✅ Fix: Defers state update
+      setTimeout(() => onStart(newState,config.mines), 0);  // ✅ Fix: Defers state update
       return newState;
     });
   }
