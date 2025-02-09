@@ -1,78 +1,114 @@
-import { useState} from "react";
+import { useEffect, useState } from "react";
+
+const generateNextReturn = (mines) => {
+  let baseMultiplier = 1.01; // Starting multiplier
+  let growthFactor = 1.05 + mines * 0.02; // Higher mines = Higher growth
+
+  return Array.from({ length: 24 }, (_, i) => {
+    baseMultiplier *= growthFactor;
+    return parseFloat(baseMultiplier.toFixed(2)); // Keep precision
+  });
+};
 
 const initialConfigure = {
-  mines: 1,
-  nextReturn: [
-    1.01, 1.05, 1.1, 1.15, 1.21, 1.27, 1.34, 1.42, 1.51, 1.61, 1.73, 1.86, 2.02,
-    2.2, 2.42, 2.69, 3.3, 3.46, 4.04, 4.85,
-  ],
+  mines: 1, // Default, user can change
+  nextReturn: generateNextReturn(1), // Dynamically generated based on mines
   nextReturnIndex: 0,
   balance: 100.0,
   betPool: [
-    0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 2.4, 4.0, 8.0, 20.0, 40.0, 100.0,
-    200.0,
+    0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 2.4, 4.0, 8.0, 
+    20.0, 40.0, 100.0, 200.0,
   ],
   poolIndex: 0,
+  currentEarning: 0,
+  diamondsFound: [], // Store selected diamonds
 };
-export default function Controlls({ onStart }) {
+
+
+export default function Controlls({ onStart, diamond, selectedCell }) {
   const [config, setConfig] = useState(initialConfigure);
   const [gameStarted, setGameStarted] = useState(false);
 
-  function handleIncreasePool() {
-    let oldpoolIndex = config.poolIndex;
-    if (oldpoolIndex + 1 > 14) {
-      return;
+  useEffect(() => {
+    if (
+      diamond &&
+      selectedCell !== undefined &&
+      !config.diamondsFound.includes(selectedCell)
+    ) {
+      setConfig((prev) => {
+        const nextIndex = Math.min(
+          prev.nextReturnIndex + 1,
+          prev.nextReturn.length - 1
+        ); // Ensures we don’t exceed the array length
+        const nextMultiplier =
+          prev.nextReturn[nextIndex] ??
+          prev.nextReturn[prev.nextReturn.length - 1]; // Prevents undefined error
+
+        const newEarning =
+          prev.currentEarning === 0
+            ? prev.betPool[prev.poolIndex] * nextMultiplier
+            : prev.currentEarning *
+              (nextMultiplier / prev.nextReturn[prev.nextReturnIndex]);
+
+        return {
+          ...prev,
+          nextReturnIndex: nextIndex,
+          currentEarning: newEarning,
+          diamondsFound: [...prev.diamondsFound, selectedCell],
+        };
+      });
     }
-    setConfig((prev) => {
-      const newConfig = { ...prev, poolIndex: prev.poolIndex + 1 };
-      return newConfig;
-    });
+  }, [diamond, selectedCell]);
+
+  function handleIncreasePool() {
+    setConfig((prev) => ({
+      ...prev,
+      poolIndex: Math.min(prev.poolIndex + 1, prev.betPool.length - 1),
+    }));
   }
 
   function handleDecreasePool() {
-    let oldpoolIndex = config.poolIndex;
-    if (oldpoolIndex - 1 < 0) {
-      return;
-    }
-    setConfig((prev) => {
-      const newConfig = { ...prev, poolIndex: prev.poolIndex - 1 };
-      return newConfig;
-    });
-  }
-  function handleMines(event) {
-    setConfig((prev) => {
-      const newConfig = { ...prev, mines: event.target.value };
-      return newConfig;
-    });
+    setConfig((prev) => ({
+      ...prev,
+      poolIndex: Math.max(prev.poolIndex - 1, 0),
+    }));
   }
 
-  //start game
+  function handleMines(event) {
+    setConfig((prev) => ({
+      ...prev,
+      mines: Number(event.target.value),
+    }));
+  }
+
   function handleStartGame() {
     setGameStarted((prev) => {
       const newState = !prev;
-      setTimeout(() => onStart(newState,config.mines), 0);  // ✅ Fix: Defers state update
+      setTimeout(() => onStart(newState, config.mines), 0);
       return newState;
     });
   }
-  
+
+  //cashout
+  function handleCashout() {
+    setConfig((prev) => ({
+      ...prev,
+      balance: prev.balance + prev.currentEarning, // ✅ Add earnings to balance
+      currentEarning: 0, // Reset earnings
+      diamondsFound: [], // Reset found diamonds
+      nextReturnIndex: 0, // Reset multiplier
+    }));
+    setGameStarted(false); // ✅ Stop game
+  }
 
   return (
     <aside id="right">
       <div className="control-top">
         <label>Mines</label>
         <select className="mines" onChange={handleMines} disabled={gameStarted}>
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
-          <option>4</option>
-          <option>6</option>
-          <option>8</option>
-          <option>10</option>
-          <option>12</option>
-          <option>14</option>
-          <option>16</option>
-          <option>18</option>
-          <option>20</option>
+          {[1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, 20].map((num) => (
+            <option key={num}>{num}</option>
+          ))}
         </select>
         <p>
           Next Return
@@ -81,10 +117,10 @@ export default function Controlls({ onStart }) {
       </div>
       <img src="miner2.png" alt="miners" />
       <div className="balance">
-        Balance : <p>&#8377; {config.balance}</p>
+        Balance : <p>&#8377; {config.balance.toFixed(2)}</p>
       </div>
       <button
-        className={`start ${gameStarted ? "startDisable" : null}`}
+        className={`start ${gameStarted ? "startDisable" : ""}`}
         onClick={handleStartGame}
         disabled={gameStarted}
       >
@@ -104,8 +140,14 @@ export default function Controlls({ onStart }) {
           </button>
         </div>
         <div className="bottom-controls-right">
-          <p>CASHOUT</p>
-          <span>&#8377; {210}</span>
+          <p
+            className="cashout"
+            onClick={handleCashout}
+            disabled={!gameStarted || config.currentEarning === 0}
+          >
+            CASHOUT
+          </p>
+          <span>&#8377; {config.currentEarning.toFixed(2)}</span>
         </div>
       </div>
     </aside>

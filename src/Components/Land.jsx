@@ -8,13 +8,12 @@ const initialLand = [
   [null, null, null, null, null],
 ];
 
-export default function Land({ gameStarted }) {
+export default function Land({ gameStarted, ondig }) {
   const { start, mines } = gameStarted;
   const audioRef = useRef(null);
   const [minePositions, setMinePositions] = useState([]);
   const [revealedCells, setRevealedCells] = useState(new Set()); // Track revealed cells
   const [land, setLand] = useState(initialLand);
-  // console.log("mines fro  land ", mines);
 
   // Generate random mine positions when game starts
   useEffect(() => {
@@ -30,7 +29,7 @@ export default function Land({ gameStarted }) {
   }, [start, mines]);
 
   const handleClickBox = (rowIndex, colIndex) => {
-    const position = rowIndex * 5 + colIndex;
+    const position = rowIndex * 5 + colIndex; // can from [0-24]
     if (revealedCells.has(position)) return; //no double clicked
 
     if (audioRef.current) {
@@ -44,6 +43,15 @@ export default function Land({ gameStarted }) {
 
     // Update revealed cells
     setRevealedCells((prev) => new Set(prev).add(position));
+
+    //updating nextReturn and cashout
+
+    if (!isMine) {
+      ondig(true, position); // Send both diamond status and position
+    } else {
+      ondig(false, position);
+    }
+    
 
     // Update land state
     setLand((prevLand) => {
@@ -61,7 +69,7 @@ export default function Land({ gameStarted }) {
 
   return (
     <>
-      {/* Cracking Sound */}
+      {/* Broken Sound */}
       <audio ref={audioRef} src="/LandCrackAudio.mp3" preload="auto" />
 
       <ol className="land">
@@ -75,7 +83,7 @@ export default function Land({ gameStarted }) {
                   ? cell === "mine"
                     ? "/logos/bomb.png"
                     : "/logos/diamond2.png"
-                  : "/logos/soil2.avif"; // Default land image
+                  : "/logos/soil3.jpg"; // Default land image
 
                 return (
                   <li key={colIndex} className={start ? "" : "disabled"}>
@@ -99,3 +107,5 @@ export default function Land({ gameStarted }) {
     </>
   );
 }
+
+//start from state lifting from here to app.js and then to controll.jsx
