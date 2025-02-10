@@ -8,14 +8,24 @@ const initialLand = [
   [null, null, null, null, null],
 ];
 
-export default function Land({ gameStarted, ondig }) {
+export default function Land({ gameStarted, ondig, reset }) {
   const { start, mines } = gameStarted;
   const audioRef = useRef(null);
   const [minePositions, setMinePositions] = useState([]);
-  const [revealedCells, setRevealedCells] = useState(new Set()); // Track revealed cells
+  const [revealedCells, setRevealedCells] = useState(new Set());
   const [land, setLand] = useState(initialLand);
 
-  // Generate random mine positions when game starts
+  // Reset the game if `reset` is triggered
+  useEffect(() => {
+    if (reset) {
+      console.log("Game resetting...");
+      setMinePositions([]);
+      setRevealedCells(new Set());
+      setLand(initialLand);
+    }
+  }, [reset]);
+
+  // Generate new mine positions when game starts
   useEffect(() => {
     if (start) {
       const positions = new Set();
@@ -23,55 +33,40 @@ export default function Land({ gameStarted, ondig }) {
         positions.add(Math.floor(Math.random() * 25)); // 5x5 grid
       }
       setMinePositions(Array.from(positions));
-      setRevealedCells(new Set()); // Reset revealed cells when game restarts
+      setRevealedCells(new Set()); // Reset revealed cells
       setLand(initialLand); // Reset land state
     }
   }, [start, mines]);
 
   const handleClickBox = (rowIndex, colIndex) => {
-    const position = rowIndex * 5 + colIndex; // can from [0-24]
-    if (revealedCells.has(position)) return; //no double clicked
+    const position = rowIndex * 5 + colIndex;
+    if (revealedCells.has(position)) return;
 
     if (audioRef.current) {
-      // Reset audio to the start and play it again
-      audioRef.current.currentTime = 0; // Reset to start
-      audioRef.current.play(); // Play audio
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
     }
 
-    // Determine if it's a mine or a safe spot
     const isMine = minePositions.includes(position);
-
-    // Update revealed cells
     setRevealedCells((prev) => new Set(prev).add(position));
 
-    //updating nextReturn and cashout
+    ondig(!isMine, position);
 
-    if (!isMine) {
-      ondig(true, position); // Send both diamond status and position
-    } else {
-      ondig(false, position);
-    }
-    
-
-    // Update land state
-    setLand((prevLand) => {
-      const newLand = prevLand.map((row, rIdx) =>
+    setLand((prevLand) =>
+      prevLand.map((row, rIdx) =>
         row.map((cell, cIdx) => {
           if (rIdx === rowIndex && cIdx === colIndex) {
-            return isMine ? "mine" : "diamond"; // Store result
+            return isMine ? "mine" : "diamond";
           }
           return cell;
         })
-      );
-      return newLand;
-    });
+      )
+    );
   };
 
   return (
     <>
-      {/* Broken Sound */}
       <audio ref={audioRef} src="/LandCrackAudio.mp3" preload="auto" />
-
       <ol className="land">
         {land.map((row, rowIndex) => (
           <li key={rowIndex} className="row">
@@ -83,7 +78,7 @@ export default function Land({ gameStarted, ondig }) {
                   ? cell === "mine"
                     ? "/logos/bomb.png"
                     : "/logos/diamond2.png"
-                  : "/logos/soil3.jpg"; // Default land image
+                  : "/logos/soil3.jpg";
 
                 return (
                   <li key={colIndex} className={start ? "" : "disabled"}>
@@ -92,9 +87,7 @@ export default function Land({ gameStarted, ondig }) {
                       alt={cell === "mine" ? "Mine" : "Diamond"}
                       className="flipableImage"
                       onClick={
-                        start
-                          ? () => handleClickBox(rowIndex, colIndex)
-                          : undefined
+                        start ? () => handleClickBox(rowIndex, colIndex) : undefined
                       }
                     />
                   </li>
@@ -107,5 +100,3 @@ export default function Land({ gameStarted, ondig }) {
     </>
   );
 }
-
-//start from state lifting from here to app.js and then to controll.jsx
